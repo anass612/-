@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Plus, X } from 'lucide-react'
+import { Check, Plus, Truck, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -11,6 +11,8 @@ import {
   SecondaryButton, Select, Spinner, StatusPill, TextField, Toggle,
 } from '../../components/rime/primitives'
 import { TableCard, THead, TH, TR, TD } from '../../components/rime/Table'
+
+type ReturnCondition = 'good' | 'needs_repair' | 'damaged' | 'missing'
 
 interface BranchHistoryRow {
   total_visits: number
@@ -44,6 +46,11 @@ export function BranchHistory() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
+
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [removeCondition, setRemoveCondition] = useState<ReturnCondition>('good')
+  const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
 
   async function load() {
     if (!id) return
@@ -91,6 +98,22 @@ export function BranchHistory() {
 
     setFormSuccess(t.branch.sensorsSaved)
     setQuantity(1); setBatteryLevel(''); setLifeValue(''); setNotes(''); setCustomType('')
+    await load()
+  }
+
+  async function handleConfirmRemove(deploymentId: string) {
+    if (!profile) return
+    setRemoveError(null)
+    setRemoving(true)
+    const { error } = await supabase.rpc('fn_retrieve_asset', {
+      p_deployment_id: deploymentId,
+      p_returned_by: profile.id,
+      p_return_condition: removeCondition,
+    })
+    setRemoving(false)
+    if (error) { setRemoveError(error.message); return }
+    setRemovingId(null)
+    setRemoveCondition('good')
     await load()
   }
 
@@ -154,10 +177,12 @@ export function BranchHistory() {
                   <TH>{t.branch.col_period}</TH>
                   <TH>{t.branch.col_currentState}</TH>
                   <TH>{t.branch.col_battery}</TH>
+                  {canEdit && <TH>{t.branch.col_actions}</TH>}
                 </THead>
                 <tbody>
                   {deployments.map((d) => {
                     const b = getBatteryInfo(d.asset, { overdue: t.branch.batteryOverdue, days: t.branch.days })
+                    const isActive = !d.actual_return_date
                     return (
                       <TR key={d.id}>
                         <TD>{d.asset ? <Link to={`/assets/${d.asset.id}`}><Mono className="font-medium" style={{ color: 'var(--color-link)' }}>{d.asset.serial_number}</Mono></Link> : t.common.dash}</TD>
@@ -167,7 +192,13 @@ export function BranchHistory() {
                             : d.asset?.asset_type ?? t.common.dash}
                         </TD>
                         <TD><Mono style={{ fontSize: 12 }}>{d.deployed_at.slice(0, 10)} → {d.actual_return_date ? d.actual_return_date.slice(0, 10) : t.deviceHistory.ongoing}</Mono></TD>
-                        <TD>{d.asset && <StatusPill tone={ASSET_STATUS_TONE[d.asset.current_status]}>{t.status[d.asset.current_status]}</StatusPill>}</TD>
+                        <TD>
+                          {!isActive ? (
+                            <StatusPill tone="neutral">{t.branch.removedOn} <Mono style={{ fontSize: 11 }}>{d.actual_return_date!.slice(0, 10)}</Mono></StatusPill>
+                          ) : (
+                            d.asset && <StatusPill tone={ASSET_STATUS_TONE[d.asset.current_status]}>{t.status[d.asset.current_status]}</StatusPill>
+                          )}
+                        </TD>
                         <TD>
                           {!b ? <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t.branch.noBattery}</span> : (
                             <div>
@@ -179,12 +210,37 @@ export function BranchHistory() {
                             </div>
                           )}
                         </TD>
+                        {canEdit && (
+                          <TD>
+                            {!isActive ? null : removingId === d.id ? (
+                              <div className="flex items-center gap-1.5" style={{ minWidth: 190 }}>
+                                <Select value={removeCondition} onChange={(e) => setRemoveCondition(e.target.value as ReturnCondition)} style={{ height: 32, fontSize: 12, padding: '0 6px' }}>
+                                  <option value="good">{t.status.good}</option>
+                                  <option value="needs_repair">{t.status.needs_repair}</option>
+                                  <option value="damaged">{t.status.damaged}</option>
+                                  <option value="missing">{t.status.lost_damaged}</option>
+                                </Select>
+                                <button onClick={() => handleConfirmRemove(d.id)} disabled={removing} style={{ height: 32, width: 32, color: 'var(--success-text)' }} title={t.common.confirm}>
+                                  <Check size={16} />
+                                </button>
+                                <button onClick={() => setRemovingId(null)} style={{ height: 32, width: 32, color: 'var(--text-tertiary)' }} title={t.common.cancel}>
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            ) : (
+                              <SecondaryButton icon={<Truck size={13} />} onClick={() => { setRemovingId(d.id); setRemoveError(null) }} style={{ height: 32, padding: '0 10px', fontSize: 12 }}>
+                                {t.branch.remove}
+                              </SecondaryButton>
+                            )}
+                          </TD>
+                        )}
                       </TR>
                     )
                   })}
                 </tbody>
               </TableCard>
             )}
+            {removeError && <p style={{ color: 'var(--color-error)', fontSize: 13, marginTop: 8 }}>{removeError}</p>}
           </div>
         </div>
 
