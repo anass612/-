@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutGrid, Box, Wrench, Truck, ClipboardList, Bell, Package, Building2, Receipt, BarChart3,
+  LayoutGrid, Box, Wrench, Truck, ClipboardList, Bell, Package, Building2, Receipt, BarChart3, History,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../i18n/LanguageContext'
 
 const ICONS = {
   grid: LayoutGrid, box: Box, tool: Wrench, truck: Truck, clipboard: ClipboardList,
-  bell: Bell, package: Package, building: Building2, receipt: Receipt, chart: BarChart3,
+  bell: Bell, package: Package, building: Building2, receipt: Receipt, chart: BarChart3, history: History,
 }
 
 interface NavItem {
@@ -15,6 +15,7 @@ interface NavItem {
   key: keyof typeof ICONS
   labelKey: keyof ReturnType<typeof useLanguage>['t']['nav']
   badge?: number
+  adminOnly?: boolean
 }
 
 const STAFF_ITEMS: NavItem[] = [
@@ -28,12 +29,14 @@ const STAFF_ITEMS: NavItem[] = [
   { to: '/clients', key: 'building', labelKey: 'clients' },
   { to: '/invoices', key: 'receipt', labelKey: 'invoices' },
   { to: '/reports', key: 'chart', labelKey: 'reports' },
+  { to: '/audit', key: 'history', labelKey: 'audit', adminOnly: true },
 ]
 
 export function NavRail({ alertBadge = 0 }: { alertBadge?: number }) {
   const { profile } = useAuth()
   const { t } = useLanguage()
   const initials = (profile?.full_name ?? '?').split(' ').map((p) => p[0]).slice(0, 2).join('')
+  const items = STAFF_ITEMS.filter((item) => !item.adminOnly || profile?.role === 'admin')
 
   return (
     <nav
@@ -47,7 +50,7 @@ export function NavRail({ alertBadge = 0 }: { alertBadge?: number }) {
         </span>
       </div>
 
-      {STAFF_ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = ICONS[item.key]
         const badge = item.labelKey === 'alerts' ? alertBadge : undefined
         return (

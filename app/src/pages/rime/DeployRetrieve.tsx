@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { CalendarClock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../i18n/LanguageContext'
 import type { Asset, Client, Consumable, Deployment } from '../../lib/types'
-import { Card, Checkbox, CONDITION_TONE, Field, Mono, PrimaryButton, Select, Spinner, StatusPill, TextField } from '../../components/rime/primitives'
+import { Card, Checkbox, CONDITION_TONE, Field, Mono, PrimaryButton, SecondaryButton, Select, Spinner, StatusPill, TextField } from '../../components/rime/primitives'
 import { TableCard, THead, TH, TR, TD } from '../../components/rime/Table'
 import { TopBar } from '../../components/rime/TopBar'
 
@@ -13,6 +14,7 @@ type Mode = 'deploy' | 'retrieve'
 export function DeployRetrieve() {
   const { profile } = useAuth()
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [params] = useSearchParams()
   const [mode, setMode] = useState<Mode>((params.get('mode') as Mode) ?? 'deploy')
 
@@ -130,6 +132,11 @@ export function DeployRetrieve() {
           </div>
         }
         subtitle={`${mode === 'deploy' ? selectedAssets.size : selectedDeployments.size} selected`}
+        actions={profile?.role === 'admin' && (
+          <SecondaryButton icon={<CalendarClock size={15} />} onClick={() => navigate('/deployments/backfill')}>
+            {t.backfill.navLink}
+          </SecondaryButton>
+        )}
       />
 
       <div className="p-6 grid gap-4" style={{ background: 'var(--bg-base)', gridTemplateColumns: '1fr 1.25fr' }}>

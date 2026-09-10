@@ -65,6 +65,7 @@ export interface Deployment {
   client_id: string
   contract_reference: string | null
   deployed_at: string
+  deployed_at_is_estimated: boolean
   expected_return_date: string | null
   actual_return_date: string | null
   deployed_by: string
@@ -131,6 +132,18 @@ export interface Task {
   completion_notes: string | null
   completed_at: string | null
   created_at: string
+}
+
+export interface AuditLogRow {
+  id: number
+  occurred_at: string
+  actor_id: string | null
+  table_name: string
+  row_id: string | null
+  action: 'INSERT' | 'UPDATE' | 'DELETE'
+  old_row: Record<string, unknown> | null
+  new_row: Record<string, unknown> | null
+  rpc_name: string | null
 }
 
 export interface MaintenanceLog {

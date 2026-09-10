@@ -10,6 +10,8 @@ import { DeviceHistory } from './pages/rime/DeviceHistory'
 import { Assembly } from './pages/rime/Assembly'
 import { Teardown } from './pages/rime/Teardown'
 import { DeployRetrieve } from './pages/rime/DeployRetrieve'
+import { DeploymentBackfill } from './pages/rime/DeploymentBackfill'
+import { AuditLog } from './pages/rime/AuditLog'
 import { ClientList } from './pages/clients/ClientList'
 import { BranchHistory } from './pages/rime/BranchHistory'
 import { Alerts } from './pages/rime/Alerts'
@@ -39,6 +41,7 @@ export default function App() {
               <Route path="/assembly/teardown" element={<ProtectedRoute roles={['admin', 'warehouse_staff']}><Teardown /></ProtectedRoute>} />
 
               <Route path="/deployments" element={<ProtectedRoute roles={['admin', 'warehouse_staff']}><DeployRetrieve /></ProtectedRoute>} />
+              <Route path="/deployments/backfill" element={<ProtectedRoute roles={['admin']}><DeploymentBackfill /></ProtectedRoute>} />
 
               <Route path="/clients" element={<ProtectedRoute roles={['admin', 'warehouse_staff']}><ClientList /></ProtectedRoute>} />
               <Route path="/clients/:id" element={<ProtectedRoute roles={['admin', 'warehouse_staff']}><BranchHistory /></ProtectedRoute>} />
@@ -52,6 +55,7 @@ export default function App() {
               <Route path="/invoices/new" element={<ProtectedRoute roles={['admin', 'warehouse_staff']}><InvoiceEntry /></ProtectedRoute>} />
 
               <Route path="/reports" element={<ProtectedRoute roles={['admin', 'warehouse_staff']}><Reports /></ProtectedRoute>} />
+              <Route path="/audit" element={<ProtectedRoute roles={['admin']}><AuditLog /></ProtectedRoute>} />
 
               <Route path="/tasks" element={<ProtectedRoute roles={['admin', 'warehouse_staff']}><Tasks /></ProtectedRoute>} />
               <Route path="/tasks/:id" element={<TaskDetail />} />

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Truck, Download, Clock } from 'lucide-react'
+import { Truck, Download, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../i18n/LanguageContext'
-import type { Asset, Client, Component, Deployment, MaintenanceLog } from '../../lib/types'
+import type { Asset, AuditLogRow, Client, Component, Deployment, MaintenanceLog } from '../../lib/types'
 import { getBatteryInfo } from '../../lib/battery'
+import { diffFields } from '../../lib/auditDiff'
 import {
   ASSET_STATUS_TONE, Card, EmptyState, Field, KpiCard, Mono, SecondaryButton, Spinner, StatusPill, TextField,
 } from '../../components/rime/primitives'
@@ -37,6 +38,9 @@ export function DeviceHistory() {
   const [readingValue, setReadingValue] = useState('')
   const [savingBattery, setSavingBattery] = useState(false)
   const [batteryError, setBatteryError] = useState<string | null>(null)
+  const [auditRows, setAuditRows] = useState<AuditLogRow[]>([])
+  const [actors, setActors] = useState<Record<string, string>>({})
+  const [expandedAuditId, setExpandedAuditId] = useState<number | null>(null)
 
   async function load() {
     if (!id) return
@@ -82,6 +86,15 @@ export function DeviceHistory() {
       const { data: serialized } = await supabase.from('assets').select('*').eq('parent_asset_id', id)
       setAssembly({ assembled_at: '', assembled_by_name: null, total_component_cost: null, bulkParts: [], serializedParts: (serialized as Asset[]) ?? [] })
     }
+
+    const { data: audit } = await supabase.from('audit_log').select('*').eq('table_name', 'assets').eq('row_id', id).order('occurred_at', { ascending: false })
+    setAuditRows((audit as AuditLogRow[]) ?? [])
+    const actorIds = [...new Set(((audit as AuditLogRow[]) ?? []).map((r) => r.actor_id).filter(Boolean))] as string[]
+    if (actorIds.length) {
+      const { data: profs } = await supabase.from('profiles').select('id, full_name').in('id', actorIds)
+      setActors(Object.fromEntries(((profs as { id: string; full_name: string }[]) ?? []).map((p) => [p.id, p.full_name])))
+    }
+
     setLoading(false)
   }
 
@@ -280,7 +293,12 @@ export function DeviceHistory() {
                 <TR key={d.id}>
                   <TD><Mono>{deployments.length - i}</Mono></TD>
                   <TD>{clients[d.client_id]?.client_name} — {clients[d.client_id]?.branch_name}</TD>
-                  <TD><Mono>{d.deployed_at.slice(0, 10)}</Mono></TD>
+                  <TD>
+                    <Mono>{d.deployed_at.slice(0, 10)}</Mono>
+                    {d.deployed_at_is_estimated && (
+                      <div style={{ fontSize: 10, color: 'var(--warning-text)', marginTop: 2 }} title={t.common.estimatedDate}>● {t.common.estimatedDate}</div>
+                    )}
+                  </TD>
                   <TD><Mono>{d.actual_return_date ? d.actual_return_date.slice(0, 10) : t.deviceHistory.ongoing}</Mono></TD>
                   <TD><Mono>{daysBetween(d.deployed_at, d.actual_return_date ?? new Date().toISOString())}</Mono></TD>
                   <TD>
@@ -296,6 +314,60 @@ export function DeviceHistory() {
               ))}
             </tbody>
           </TableCard>
+        )}
+
+        {profile?.role === 'admin' && (
+          <div className="mt-4">
+            <div className="font-semibold mb-2">{t.deviceHistory.changeLog}</div>
+            {auditRows.length === 0 ? <EmptyState message={t.common.noData} /> : (
+              <TableCard>
+                <THead>
+                  <TH>{t.audit.col_time}</TH>
+                  <TH>{t.audit.col_actor}</TH>
+                  <TH>{t.audit.col_action}</TH>
+                  <TH>{t.audit.col_source}</TH>
+                  <TH>{null}</TH>
+                </THead>
+                <tbody>
+                  {auditRows.map((r) => {
+                    const changed = diffFields(r.old_row, r.new_row)
+                    const isOpen = expandedAuditId === r.id
+                    return (
+                      <Fragment key={r.id}>
+                        <TR onClick={() => setExpandedAuditId(isOpen ? null : r.id)}>
+                          <TD><Mono style={{ fontSize: 12 }}>{new Date(r.occurred_at).toLocaleString()}</Mono></TD>
+                          <TD style={{ fontSize: 13 }}>{r.actor_id ? actors[r.actor_id] ?? t.audit.unknownActor : t.audit.systemActor}</TD>
+                          <TD><StatusPill tone={r.action === 'INSERT' ? 'success' : r.action === 'DELETE' ? 'critical' : 'info'}>{r.action}</StatusPill></TD>
+                          <TD style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.rpc_name ?? t.audit.directWrite}</TD>
+                          <TD>{isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</TD>
+                        </TR>
+                        {isOpen && (
+                          <tr>
+                            <td colSpan={5} style={{ background: 'var(--surface-secondary)', padding: 14 }}>
+                              {changed.length === 0 ? (
+                                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{t.audit.noFieldChanges}</span>
+                              ) : (
+                                <div className="grid gap-1.5" style={{ fontSize: 12 }}>
+                                  {changed.map((c) => (
+                                    <div key={c.key} className="flex gap-2 items-baseline flex-wrap">
+                                      <Mono className="font-semibold" style={{ minWidth: 160 }}>{c.key}</Mono>
+                                      <Mono style={{ color: 'var(--color-error)', textDecoration: 'line-through' }}>{JSON.stringify(c.before) ?? t.common.dash}</Mono>
+                                      <span>→</span>
+                                      <Mono style={{ color: 'var(--success-text)' }}>{JSON.stringify(c.after) ?? t.common.dash}</Mono>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+                </tbody>
+              </TableCard>
+            )}
+          </div>
         )}
       </div>
     </div>

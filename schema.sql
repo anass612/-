@@ -247,6 +247,7 @@ create table deployments (
   client_id uuid not null references clients(id),
   contract_reference text, -- يربط لاحقاً بعقد CRM
   deployed_at timestamptz not null default now(),
+  deployed_at_is_estimated boolean not null default true, -- true = تاريخ استيراد وليس تركيب حقيقي، مضافة 0011
   expected_return_date date,
   actual_return_date timestamptz,
   deployed_by uuid not null references profiles(id),
@@ -636,6 +637,26 @@ create policy "admin_warehouse_full_access_deployments" on deployments
   for all using (
     exists (select 1 from profiles where id = auth.uid() and role in ('admin','warehouse_staff'))
   );
+
+-- ============================================================================
+-- سجل التدقيق (Audit Log) — مضافة 0011، append-only، admin فقط يقرأه
+-- ============================================================================
+create table audit_log (
+  id bigserial primary key,
+  occurred_at timestamptz not null default now(),
+  actor_id uuid references profiles(id),
+  table_name text not null,
+  row_id uuid,
+  action text not null check (action in ('INSERT','UPDATE','DELETE')),
+  old_row jsonb,
+  new_row jsonb,
+  rpc_name text -- اسم الـ RPC اللي سبب التغيير، لو الكتابة مرّت عبر دالة (app.rpc_name)
+);
+
+create policy "admin_read_audit" on audit_log for select using (fn_is_admin());
+-- الكتابة تصير فقط عبر fn_audit() (trigger عام، security definer) على:
+-- assets, deployments, tasks, components, consumables, clients, profiles,
+-- maintenance_logs, purchase_invoices
 
 -- ============================================================================
 -- ملاحظات تنفيذ قبل تشغيل هذا الملف

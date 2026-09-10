@@ -199,7 +199,12 @@ export function BranchHistory() {
                         <TD style={{ fontSize: 13 }}>
                           {d.asset?.asset_type === 'sensor' ? d.asset.sensor_subtype : d.asset?.asset_type ?? t.common.dash}
                         </TD>
-                        <TD><Mono style={{ fontSize: 12 }}>{d.deployed_at.slice(0, 10)} → {d.actual_return_date ? d.actual_return_date.slice(0, 10) : t.deviceHistory.ongoing}</Mono></TD>
+                        <TD>
+                          <Mono style={{ fontSize: 12 }}>{d.deployed_at.slice(0, 10)} → {d.actual_return_date ? d.actual_return_date.slice(0, 10) : t.deviceHistory.ongoing}</Mono>
+                          {d.deployed_at_is_estimated && (
+                            <div style={{ fontSize: 10, color: 'var(--warning-text)', marginTop: 2 }} title={t.common.estimatedDate}>● {t.common.estimatedDate}</div>
+                          )}
+                        </TD>
                         <TD>
                           {!isActive ? (
                             <StatusPill tone="neutral">{t.branch.removedOn} <Mono style={{ fontSize: 11 }}>{d.actual_return_date!.slice(0, 10)}</Mono></StatusPill>
