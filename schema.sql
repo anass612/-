@@ -95,6 +95,19 @@ create table components (
 comment on column components.requires_individual_tracking is
   'قسم 2.8.1 — لو true، هذي القطعة تُسجَّل كـ Asset فردي (O-NA, SSD) مو Component bulk. الجدول يبقى موجود للأرشفة/التصنيف بس.';
 
+-- أثر تدقيقي لكل دفعة تركيب حساسات (fn_install_sensors) — مضافة 0010،
+-- بنفس روح assembly_event_components: كل دفعة تركيب تخصم من quantity_on_hand
+create table sensor_installations (
+  id uuid primary key default gen_random_uuid(),
+  component_id uuid not null references components(id),
+  client_id uuid not null references clients(id),
+  quantity int not null,
+  unit_cost_at_time numeric(12,2) not null,
+  installed_by uuid not null references profiles(id),
+  installed_at timestamptz not null default now(),
+  notes text
+);
+
 -- ============================================================================
 -- 6. المستهلكات (Consumables) — قسم 2.8.5
 -- ============================================================================
@@ -168,6 +181,7 @@ create table assets (
   battery_last_replaced_at date,
   battery_level_pct smallint check (battery_level_pct between 0 and 100), -- آخر قراءة فعلية لمستوى الشحن %، مضافة 0009
   battery_level_checked_at date,
+  source_component_id uuid references components(id), -- بند المخزون اللي طلع منه هذا الحساس، مضافة 0010
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

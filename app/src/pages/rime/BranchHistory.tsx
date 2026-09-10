@@ -4,7 +4,7 @@ import { Check, Plus, Truck, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../i18n/LanguageContext'
-import { SENSOR_SUBTYPES, type Asset, type Client, type Deployment, type SensorSubtype, type Task } from '../../lib/types'
+import type { Asset, Client, Component, Deployment, Task } from '../../lib/types'
 import { getBatteryInfo } from '../../lib/battery'
 import {
   ASSET_STATUS_TONE, Card, CLIENT_STATUS_TONE, EmptyState, Field, KpiCard, Mono, PrimaryButton,
@@ -34,9 +34,9 @@ export function BranchHistory() {
   const [tasks, setTasks] = useState<(Task & { technician_name: string | null })[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [sensorComponents, setSensorComponents] = useState<Component[]>([])
   const [showSensorForm, setShowSensorForm] = useState(false)
-  const [sensorType, setSensorType] = useState<SensorSubtype>('temperature')
-  const [customType, setCustomType] = useState('')
+  const [selectedComponentId, setSelectedComponentId] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [hasBattery, setHasBattery] = useState(true)
   const [batteryLevel, setBatteryLevel] = useState('')
@@ -55,16 +55,18 @@ export function BranchHistory() {
   async function load() {
     if (!id) return
     setLoading(true)
-    const [{ data: c }, { data: h }, { data: dep }, { data: tsk }] = await Promise.all([
+    const [{ data: c }, { data: h }, { data: dep }, { data: tsk }, { data: sc }] = await Promise.all([
       supabase.from('clients').select('*').eq('id', id).single(),
       supabase.from('v_branch_history').select('*').eq('branch_id', id).maybeSingle(),
       supabase.from('deployments').select('*, asset:assets(*)').eq('client_id', id).order('deployed_at', { ascending: false }),
       supabase.from('tasks').select('*, profiles(full_name)').eq('branch_id', id).eq('status', 'completed').order('completed_at', { ascending: false }).limit(6),
+      supabase.from('components').select('*').eq('category', 'sensor').order('component_name'),
     ])
     setClient(c as Client)
     setHistory(h as BranchHistoryRow | null)
     setDeployments((dep as (Deployment & { asset: Asset | null })[]) ?? [])
     setTasks(((tsk as Record<string, unknown>[] | null) ?? []).map((row) => ({ ...(row as unknown as Task), technician_name: (row.profiles as { full_name: string } | null)?.full_name ?? null })))
+    setSensorComponents((sc as Component[]) ?? [])
     setLoading(false)
   }
 
@@ -73,19 +75,24 @@ export function BranchHistory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  const selectedComponent = sensorComponents.find((c) => c.id === selectedComponentId)
+
   async function handleAddSensors() {
     if (!profile || !id) return
     setFormError(null)
     setFormSuccess(null)
-    const subtype = sensorType === 'other' ? customType.trim() : sensorType
-    if (!subtype) { setFormError(t.branch.sensorType); return }
+    if (!selectedComponentId) { setFormError(t.branch.sensorType); return }
     if (!quantity || quantity < 1) { setFormError(t.branch.quantity); return }
+    if (selectedComponent && quantity > selectedComponent.quantity_on_hand) {
+      setFormError(`${t.branch.insufficientStock} (${selectedComponent.quantity_on_hand} ${t.branch.availableQty})`)
+      return
+    }
     const lifeDays = hasBattery && lifeValue ? Math.round(Number(lifeValue) * LIFE_UNIT_DAYS[lifeUnit]) : null
 
     setSubmitting(true)
     const { error } = await supabase.rpc('fn_install_sensors', {
       p_client_id: id,
-      p_sensor_subtype: subtype,
+      p_component_id: selectedComponentId,
       p_quantity: quantity,
       p_installed_by: profile.id,
       p_has_battery: hasBattery,
@@ -94,10 +101,13 @@ export function BranchHistory() {
       p_notes: notes || null,
     })
     setSubmitting(false)
-    if (error) { setFormError(error.message); return }
+    if (error) {
+      setFormError(error.message.includes('insufficient_stock') ? t.branch.insufficientStock : error.message)
+      return
+    }
 
     setFormSuccess(t.branch.sensorsSaved)
-    setQuantity(1); setBatteryLevel(''); setLifeValue(''); setNotes(''); setCustomType('')
+    setQuantity(1); setBatteryLevel(''); setLifeValue(''); setNotes('')
     await load()
   }
 
@@ -187,9 +197,7 @@ export function BranchHistory() {
                       <TR key={d.id}>
                         <TD>{d.asset ? <Link to={`/assets/${d.asset.id}`}><Mono className="font-medium" style={{ color: 'var(--color-link)' }}>{d.asset.serial_number}</Mono></Link> : t.common.dash}</TD>
                         <TD style={{ fontSize: 13 }}>
-                          {d.asset?.asset_type === 'sensor'
-                            ? (t.sensorSubtype[d.asset.sensor_subtype as keyof typeof t.sensorSubtype] ?? d.asset.sensor_subtype)
-                            : d.asset?.asset_type ?? t.common.dash}
+                          {d.asset?.asset_type === 'sensor' ? d.asset.sensor_subtype : d.asset?.asset_type ?? t.common.dash}
                         </TD>
                         <TD><Mono style={{ fontSize: 12 }}>{d.deployed_at.slice(0, 10)} → {d.actual_return_date ? d.actual_return_date.slice(0, 10) : t.deviceHistory.ongoing}</Mono></TD>
                         <TD>
@@ -253,20 +261,25 @@ export function BranchHistory() {
               </SecondaryButton>
             </div>
 
-            {showSensorForm && (
+            {showSensorForm && sensorComponents.length === 0 ? (
+              <div className="text-center py-8" style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
+                <p>{t.branch.noSensorComponents}</p>
+                <Link to="/stock/catalog" style={{ color: 'var(--color-link)' }}>{t.branch.addFromInventory}</Link>
+              </div>
+            ) : showSensorForm && (
               <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
                 <Field label={t.branch.sensorType}>
-                  <Select value={sensorType} onChange={(e) => setSensorType(e.target.value as SensorSubtype)}>
-                    {SENSOR_SUBTYPES.map((s) => <option key={s} value={s}>{t.sensorSubtype[s]}</option>)}
+                  <Select value={selectedComponentId} onChange={(e) => setSelectedComponentId(e.target.value)}>
+                    <option value="">—</option>
+                    {sensorComponents.map((c) => (
+                      <option key={c.id} value={c.id} disabled={c.quantity_on_hand <= 0}>
+                        {c.component_name} — {t.branch.availableQty}: {c.quantity_on_hand}
+                      </option>
+                    ))}
                   </Select>
                 </Field>
-                {sensorType === 'other' && (
-                  <Field label={t.branch.sensorTypeOther}>
-                    <TextField value={customType} onChange={(e) => setCustomType(e.target.value)} />
-                  </Field>
-                )}
-                <Field label={t.branch.quantity}>
-                  <TextField type="number" min={1} value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+                <Field label={t.branch.quantity} helper={selectedComponent ? `${t.branch.availableQty}: ${selectedComponent.quantity_on_hand}` : undefined}>
+                  <TextField type="number" min={1} max={selectedComponent?.quantity_on_hand} value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
                 </Field>
                 <Field label={t.branch.hasBattery}>
                   <div className="flex items-center" style={{ height: 44 }}>
