@@ -1,48 +1,153 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
-  --font-display: "Alexandria", "IBM Plex Sans Arabic", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+/* ============================================================================
+   RIME Design System — First Light v1 (production tokens)
+   ========================================================================= */
 
-  --color-midnight: #0a0e1a;
-  --color-deep-navy: #101b33;
-  --color-horizon: #1e3a5f;
-  --color-first-light: #f2762e;
-  --color-amber-dawn: #f5a623;
-  --color-clarity: #fafaf7;
-  --color-frost: #c9d4e3;
-  --color-ink: #14203a;
-  --color-ink-soft: #5a6b85;
-  --color-hairline: #e3e6e0;
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/SpaceGrotesk-Variable.ttf") format("truetype-variations");
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Alexandria";
+  src: url("/fonts/Alexandria-Variable.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Variable.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face { font-family: "IBM Plex Sans Arabic"; src: url("/fonts/IBMPlexSansArabic-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "IBM Plex Sans Arabic"; src: url("/fonts/IBMPlexSansArabic-Medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "IBM Plex Sans Arabic"; src: url("/fonts/IBMPlexSansArabic-SemiBold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "IBM Plex Sans Arabic"; src: url("/fonts/IBMPlexSansArabic-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/fonts/IBMPlexMono-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/fonts/IBMPlexMono-Medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/fonts/IBMPlexMono-SemiBold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+
+:root {
+  --rime-font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --rime-font-display-arabic: "Alexandria", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --rime-font-english: "Inter", system-ui, sans-serif;
+  --rime-font-arabic: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --rime-font-ui: var(--rime-font-english);
+  --rime-display-tracking: -0.02em;
+
+  --rime-text-2xs: 11px; --rime-lh-2xs: 16px;
+  --rime-text-xs: 12px;  --rime-lh-xs: 16px;
+  --rime-text-sm: 14px;  --rime-lh-sm: 20px;
+  --rime-text-md: 16px;  --rime-lh-md: 24px;
+  --rime-text-lg: 18px;  --rime-lh-lg: 28px;
+  --rime-text-xl: 24px;  --rime-lh-xl: 32px;
+  --rime-text-2xl: 32px; --rime-lh-2xl: 40px;
+  --rime-text-3xl: 40px; --rime-lh-3xl: 48px;
+
+  --rime-space-1: 4px; --rime-space-2: 8px; --rime-space-3: 12px; --rime-space-4: 16px;
+  --rime-space-5: 20px; --rime-space-6: 24px; --rime-space-8: 32px; --rime-space-10: 40px;
+  --rime-row-comfortable: 56px; --rime-row-compact: 44px; --rime-touch-min: 44px;
+
+  --rime-radius-xs: 4px; --rime-radius-sm: 6px; --rime-radius-md: 8px;
+  --rime-radius-button: 12px; --rime-radius-lg: 12px; --rime-radius-xl: 16px; --rime-radius-full: 999px;
+  --rime-corner-squircle: superellipse(2.4);
+
+  --rime-shadow-sm: 0 1px 2px rgba(10,14,26,0.06), 0 1px 1px rgba(10,14,26,0.04);
+  --rime-shadow-md: 0 4px 12px rgba(10,14,26,0.10), 0 1px 3px rgba(10,14,26,0.06);
+  --rime-shadow-lg: 0 16px 40px rgba(10,14,26,0.16), 0 4px 12px rgba(10,14,26,0.08);
+
+  --rime-duration-fast: 120ms; --rime-duration-base: 180ms; --rime-duration-slow: 240ms;
+  --rime-easing-standard: cubic-bezier(0,0,0.2,1);
+
+  /* Semantic colors — light theme (70/25/5 law) */
+  --bg-base: #f4f4f5;
+  --bg-elevated: #ffffff;
+  --surface-primary: #ffffff;
+  --surface-secondary: #F1F4F8;
+  --surface-tertiary: #E7EDF4;
+  --surface-hover: #F0F3F8;
+  --surface-selected: rgba(242,118,46,0.08);
+
+  --nav-bg: #52525b;
+  --nav-text: #fafafa;
+  --nav-muted: #6B84A3;
+  --nav-hover-bg: rgba(10,14,26,0.04);
+  --nav-active-bg: #FBE3D3;
+  --nav-active-text: #DC6519;
+
+  --color-primary: #F2762E;
+  --color-primary-hover: #DC6519;
+  --color-on-primary: #FFFFFF;
+  --color-error: #C4443D;
+  --color-link: #2A4A73;
+
+  --border-color: #E2E8F0;
+  --border-color-strong: #C9D4E3;
+
+  --text-primary: #0A0E1A;
+  --text-secondary: #3D5E88;
+  --text-tertiary: #5D7B9F;
+  --text-inverse: #FAFAF7;
+
+  --info-bg: #E4EBF3;    --info-text: #1E3A5F;   --info-border: #C9D4E3;
+  --success-bg: #DCF1DA; --success-text: #1E6E2E; --success-border: #BCE9B9;
+  --warning-bg: #FDECD0; --warning-text: #8A4B0A; --warning-border: #F8D9A6;
+  --critical-bg: #F7DEDA; --critical-text: #A62A22; --critical-border: #E8BEB8;
+
+  /* Legacy aliases — kept only for the admin-only catalog/CRUD screens (Inventory,
+     Tasks, Login, ClientList) that predate the RIME First Light v1 handoff and
+     have not been re-skinned to the production tokens above. */
+  --color-clarity: var(--bg-base);
+  --color-first-light: var(--color-primary);
+  --color-frost: var(--border-color-strong);
+  --color-hairline: var(--border-color);
+  --color-horizon: var(--color-link);
+  --color-ink: var(--text-primary);
+  --color-ink-soft: var(--text-secondary);
+  --color-midnight: #0A0E1A;
 }
 
+[dir="rtl"] {
+  --rime-font-ui: var(--rime-font-arabic);
+  --rime-font-display: var(--rime-font-display-arabic);
+}
+
+* { corner-shape: var(--rime-corner-round, round); }
+input, select, textarea { corner-shape: var(--rime-corner-squircle); }
+[data-rime-control], [data-rime-control] * { corner-shape: round; }
+
+html, body { height: 100%; }
 body {
   margin: 0;
-  background: var(--color-clarity);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--rime-font-ui);
   -webkit-font-smoothing: antialiased;
 }
+h1, h2, h3 { font-family: var(--rime-font-display); letter-spacing: var(--rime-display-tracking); }
 
-h1, h2, h3 {
-  font-family: var(--font-display);
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(10,14,26,0.14); border-radius: 999px; }
 
+/* Legacy utility classes — used only by the pre-handoff admin CRUD screens
+   (Inventory catalog, Login, Tasks list) that have not been re-skinned to the
+   RIME First Light v1 component set in components/rime/. */
 .label-mono {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.16em;
 }
-
 .card {
   background: #fff;
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
 }
-
 .btn-primary {
-  background: var(--color-first-light);
+  background: var(--color-primary);
   color: #fff;
   border-radius: 10px;
   font-weight: 600;
@@ -50,24 +155,22 @@ h1, h2, h3 {
 }
 .btn-primary:hover { filter: brightness(0.92); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
 .btn-secondary {
   background: transparent;
-  color: var(--color-ink);
-  border: 1px solid var(--color-hairline);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   font-weight: 500;
 }
-.btn-secondary:hover { background: var(--color-clarity); border-color: var(--color-frost); }
-
+.btn-secondary:hover { background: var(--bg-base); border-color: var(--border-color-strong); }
 .input {
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   background: #fff;
-  color: var(--color-ink);
+  color: var(--text-primary);
 }
 .input:focus {
   outline: none;
-  border-color: var(--color-horizon);
+  border-color: var(--color-link);
   box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
 }
