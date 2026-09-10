@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
+  --font-display: "Alexandria", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-midnight: #0a0e1a;
+  --color-deep-navy: #101b33;
+  --color-horizon: #1e3a5f;
+  --color-first-light: #f2762e;
+  --color-amber-dawn: #f5a623;
+  --color-clarity: #fafaf7;
+  --color-frost: #c9d4e3;
+  --color-ink: #14203a;
+  --color-ink-soft: #5a6b85;
+  --color-hairline: #e3e6e0;
+}
+
+body {
+  margin: 0;
+  background: var(--color-clarity);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+}
+
+.label-mono {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--color-hairline);
+  border-radius: 14px;
+}
+
+.btn-primary {
+  background: var(--color-first-light);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: filter 0.15s ease;
+}
+.btn-primary:hover { filter: brightness(0.92); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  font-weight: 500;
+}
+.btn-secondary:hover { background: var(--color-clarity); border-color: var(--color-frost); }
+
+.input {
+  border: 1px solid var(--color-hairline);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-ink);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--color-horizon);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
+}
