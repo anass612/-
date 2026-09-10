@@ -40,9 +40,14 @@ export interface Asset {
   battery_installed_at: string | null
   battery_expected_life_days: number | null
   battery_last_replaced_at: string | null
+  battery_level_pct: number | null
+  battery_level_checked_at: string | null
   created_at: string
   updated_at: string
 }
+
+export const SENSOR_SUBTYPES = ['temperature', 'gas', 'fridge', 'door', 'humidity', 'other'] as const
+export type SensorSubtype = (typeof SENSOR_SUBTYPES)[number]
 
 export interface Client {
   id: string

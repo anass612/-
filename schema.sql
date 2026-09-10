@@ -166,6 +166,8 @@ create table assets (
   battery_installed_at date,
   battery_expected_life_days int, -- nullable — يُعبّى لاحقاً وقت توفر الرقم
   battery_last_replaced_at date,
+  battery_level_pct smallint check (battery_level_pct between 0 and 100), -- آخر قراءة فعلية لمستوى الشحن %، مضافة 0009
+  battery_level_checked_at date,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

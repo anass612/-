@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Truck, Download, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../i18n/LanguageContext'
 import type { Asset, Client, Component, Deployment, MaintenanceLog } from '../../lib/types'
+import { getBatteryInfo } from '../../lib/battery'
 import {
-  ASSET_STATUS_TONE, Card, EmptyState, KpiCard, Mono, SecondaryButton, Spinner, StatusPill,
+  ASSET_STATUS_TONE, Card, EmptyState, Field, KpiCard, Mono, SecondaryButton, Spinner, StatusPill, TextField,
 } from '../../components/rime/primitives'
 import { TableCard, THead, TH, TR, TD } from '../../components/rime/Table'
 
@@ -24,6 +26,7 @@ interface AssemblyInfo {
 export function DeviceHistory() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const { t } = useLanguage()
   const [asset, setAsset] = useState<Asset | null>(null)
   const [deployments, setDeployments] = useState<Deployment[]>([])
@@ -31,6 +34,9 @@ export function DeviceHistory() {
   const [maintenance, setMaintenance] = useState<MaintenanceLog[]>([])
   const [assembly, setAssembly] = useState<AssemblyInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [readingValue, setReadingValue] = useState('')
+  const [savingBattery, setSavingBattery] = useState(false)
+  const [batteryError, setBatteryError] = useState<string | null>(null)
 
   async function load() {
     if (!id) return
@@ -84,9 +90,39 @@ export function DeviceHistory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  async function handleLogReading() {
+    if (!asset || readingValue === '') return
+    const pct = Number(readingValue)
+    if (Number.isNaN(pct) || pct < 0 || pct > 100) { setBatteryError(t.branch.batteryLevel); return }
+    setBatteryError(null)
+    setSavingBattery(true)
+    const { error } = await supabase.from('assets')
+      .update({ battery_level_pct: pct, battery_level_checked_at: new Date().toISOString().slice(0, 10) })
+      .eq('id', asset.id)
+    setSavingBattery(false)
+    if (error) { setBatteryError(error.message); return }
+    setReadingValue('')
+    await load()
+  }
+
+  async function handleMarkReplaced() {
+    if (!asset) return
+    setBatteryError(null)
+    setSavingBattery(true)
+    const today = new Date().toISOString().slice(0, 10)
+    const { error } = await supabase.from('assets')
+      .update({ battery_installed_at: today, battery_last_replaced_at: today, battery_level_pct: 100, battery_level_checked_at: today })
+      .eq('id', asset.id)
+    setSavingBattery(false)
+    if (error) { setBatteryError(error.message); return }
+    await load()
+  }
+
   if (loading) return <Spinner />
   if (!asset) return <EmptyState message={t.common.noData} />
 
+  const canEdit = profile?.role === 'admin' || profile?.role === 'warehouse_staff'
+  const battery = getBatteryInfo(asset, { overdue: t.branch.batteryOverdue, days: t.branch.days })
   const totalDeployments = deployments.length
   const totalDays = deployments.reduce((sum, d) => sum + daysBetween(d.deployed_at, d.actual_return_date ?? new Date().toISOString()), 0)
   const avgDuration = totalDeployments ? Math.round(totalDays / totalDeployments) : 0
@@ -185,6 +221,46 @@ export function DeviceHistory() {
             )}
           </Card>
         </div>
+
+        {asset.has_battery && (
+          <Card className="mb-4">
+            <div className="font-semibold mb-3">{t.deviceHistory.battery}</div>
+            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t.deviceHistory.batteryLevelNow}</div>
+                {battery?.pct != null ? <StatusPill tone={battery.tone}>{battery.pct}%</StatusPill> : <span>{t.common.dash}</span>}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t.deviceHistory.batteryInstalledAt}</div>
+                <Mono>{asset.battery_installed_at ?? t.common.dash}</Mono>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t.deviceHistory.batteryExpectedLife}</div>
+                <Mono>{asset.battery_expected_life_days ? `${asset.battery_expected_life_days} ${t.branch.days}` : t.common.dash}</Mono>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t.deviceHistory.batteryRemaining}</div>
+                {battery?.remainingLabel ? <StatusPill tone={battery.tone}>{battery.remainingLabel}</StatusPill> : <span>{t.common.dash}</span>}
+              </div>
+            </div>
+
+            {canEdit && (
+              <div className="flex items-end gap-3 mt-4 flex-wrap" style={{ borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
+                <Field label={t.deviceHistory.logReading}>
+                  <TextField type="number" min={0} max={100} value={readingValue} onChange={(e) => setReadingValue(e.target.value)} style={{ width: 120 }} />
+                </Field>
+                <SecondaryButton onClick={handleLogReading} disabled={savingBattery || readingValue === ''}>{t.deviceHistory.save}</SecondaryButton>
+                <SecondaryButton onClick={handleMarkReplaced} disabled={savingBattery}>{t.deviceHistory.markReplaced}</SecondaryButton>
+              </div>
+            )}
+            {batteryError && <p style={{ color: 'var(--color-error)', fontSize: 13, marginTop: 8 }}>{batteryError}</p>}
+            {asset.battery_level_checked_at && (
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+                {t.deviceHistory.batteryLastChecked}: <Mono>{asset.battery_level_checked_at}</Mono>
+              </p>
+            )}
+          </Card>
+        )}
 
         <div className="font-semibold mb-2">{t.deviceHistory.deploymentLog}</div>
         {deployments.length === 0 ? (
